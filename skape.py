@@ -44,6 +44,10 @@ def mix(i, j, inc=1):
 def mid(col):
   return max(col, key=col.get) if isa(col, Sym) else mu_(col)
 
+def mids(data):
+  row = data.mid or [mid(col) for col in data.cols]
+  return row
+
 def spread(col):
   if not isa(col, Sym): return sd(col)
   n = sum(col.values())
@@ -53,7 +57,7 @@ def spread(col):
 def Data(src=None):
   src = iter(src or [])
   data = o(names=next(src), cols={}, x=[], y=[], goal={},
-          klass=None, rows=[])
+          klass=None, rows=[], mid=None)
   return adds(src, roles(data))
 
 def roles(data):
@@ -67,19 +71,20 @@ def roles(data):
     else: data.x.append(at)
   return data
 
-def add(it, v, inc=1):
-  if isa(it, o):                          
-    (it.rows.append if inc == 1 else it.rows.remove)(v)
-    for at in it.cols: it.cols[at] = add(it.cols[at], v[at], inc)
-    return it
-  if v == "?": return it                 
-  if isa(it, Sym): it[v] = it.get(v, 0) + inc; return it
-  return welford(it, v, inc)            
+def add(i, v, inc=1):
+  if isa(i, o):                          
+    i.mid = None
+    (i.rows.append if inc == 1 else i.rows.remove)(v)
+    for at in i.cols: i.cols[at] = add(i.cols[at], v[at], inc)
+    return i
+  if v == "?": return i                 
+  if isa(i, Sym): i[v] = i.get(v, 0) + inc; return i
+  return welford(i, v, inc)            
 
-def adds(src, it=None):
-  if it is None: it = Num()
-  for v in src: it = add(it, v)
-  return it
+def adds(src, i=None):
+  if i is None: i = Num()
+  for v in src: i = add(i, v)
+  return i
 
 def clone(data, src=[]): return Data([data.names] + src)
 
@@ -160,7 +165,7 @@ def wins(data):
     return max(-100, int(100*(1 - (v-lo)/(med-lo + TINY))))
   return f
 
-def pick(hold, score, full):
+def pick(hold, score):
   return min(sorted(hold, key=score)[:the.check], key=score)
 
 def holdout(data):
@@ -186,8 +191,16 @@ def test__csv():
 def test__data(): 
   d=Data(csv(the.file))
   win=wins(d)
-  one= lambda: [win(r) for r in landscape(d)[:the.check]][0]
-  print(the.file, int(mu_(adds(one() for _ in range(20)))))
+  out=Num()
+  for _ in range(20):
+    rows = shuffle(d.rows)
+    n = len(rows)//2
+    train,test = rows[:n],rows[n:]
+    lab = clone(d, landscape(clone(d, some(train,2048))))
+    best,rest = clone(d,lab.rows[:5]), clone(d,lab.rows[5:])
+    order = lambda r: distx(lab,r,mids(best)) - distr(lab(r,mids(rest)))
+    row = win(pick(test,order))
+  print(int(mu_(out)))
 
 if __name__ == "__main__":
   for k, v in zip(sys.argv, sys.argv[1:]):
