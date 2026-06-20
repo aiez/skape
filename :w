@@ -24,6 +24,6 @@ push2pypi: ## build + upload to PyPI (needs ~/.pypirc account token)
 Cores ?=8
 ~/tmp/konfig/skapeself.csv :
 	ls ../optimiz/*.csv | sort -R | \
-     xargs -P$(Cores) -I{} python3 -B skape.py -file {} --data | tee $@
+  xargs -P$(Cores) -I{} python3 -B skape.py -file {} --data | tee $@
 	sort -n $@ | fmt -70
 
