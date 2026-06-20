@@ -21,9 +21,10 @@ push2pypi: ## build + upload to PyPI (needs ~/.pypirc account token)
 	@python3 -m build && python3 -m twine upload dist/*
 	@rm -rf dist build *.egg-info
 
-Cores ?=8
-~/tmp/konfig/skapeself.csv :
-	ls ../optimiz/*.csv | sort -R | \
-     xargs -P$(Cores) -I{} python3 -B skape.py --file {} --data | tee $@
-	sort -n $@ | fmt -70
+P ?= 8                      # xargs workers
+
+../tmp/konfig/skateper :
+	@ls ../optimiz/*.csv | sort -R | xargs -P$(P) -I{} \
+	  python3 -B skape.py --file {} --data | tee /dev/tty \
+    | gawk -f per.awk > $@
 

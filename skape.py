@@ -1,13 +1,15 @@
 #!/usr/bin/env python3 -B
 import sys
 from math import exp, log2
-from random import sample, seed
+from bisect import bisect_right
+from random import random as rand, sample, seed
 from types import SimpleNamespace as o
 isa = isinstance
 BIG, TINY = 1e32, 1e-32
 
 the = o(seed=1234567891, grow=4, keep=0.66, budget=50, cap=1024,
-       check=5, leaf=3, repeats=20, file="../optimiz/auto93.csv")
+       check=5, leaf=3, repeats=20, eps=0.1, maxd=4,
+       file="../optimiz/auto93.csv")
 
 # --- cols ------------------------------------------------------
 Sym = dict
@@ -45,7 +47,7 @@ def mid(col):
   return max(col, key=col.get) if isa(col, Sym) else mu_(col)
 
 def mids(data):
-  row = data.mid or [mid(col) for col in data.cols]
+  row = data.mid or [mid(data.cols[c]) for c in data.cols]
   return row
 
 def spread(col):
@@ -132,6 +134,45 @@ def landscape(data):
     pool = sorted(pool, key=project(lab, d, y))[n:]
   return sorted(list(ys), key=y)
 
+# --- ranges ----------------------------------------------------
+def has(v, lo, hi): return v == "?" or lo <= v <= hi
+def F(xs, v): return bisect_right(xs, v) / len(xs)
+
+def splits(b, r, lo=-BIG, hi=BIG, d=0):
+  cut = [v for v in b + r if lo < v < hi]
+  v = max(cut, key=lambda v: abs(F(b,v)-F(r,v)), default=None)
+  if v is None or abs(F(b,v)-F(r,v)) < the.eps or d >= the.maxd:
+    yield lo, hi, (F(b,hi)-F(b,lo)) - (F(r,hi)-F(r,lo)); return
+  yield from splits(b, r, lo, v, d+1)
+  yield from splits(b, r, v, hi, d+1)
+
+def bands(data, best, rest):
+  nb, nr = len(best), len(rest)
+  for at in data.x:
+    if isa(data.cols[at], Sym):
+      fb, fr = Sym(), Sym()
+      for row in best: add(fb, row[at])
+      for row in rest: add(fr, row[at])
+      for v in fb | fr:
+        yield fb.get(v,0)/nb - fr.get(v,0)/nr, at, v, v
+    else:
+      b = sorted(row[at] for row in best if row[at] != "?")
+      r = sorted(row[at] for row in rest if row[at] != "?")
+      if b and r:
+        for lo, hi, w in splits(b, r): yield w, at, lo, hi
+
+def esample(bnd, k):                            # weighted, no replacement
+  return sorted(bnd, key=lambda x: rand()**(1/(abs(x[0]) or TINY)))[-k:]
+
+def rule(sub):                                  # subset -> {at:[(lo,hi)]}
+  g = {}
+  for w, at, lo, hi in sub: g.setdefault(at, []).append((lo, hi))
+  return g
+
+def selects(g, row):                            # all(any( -- a DNF rule
+  return all(any(has(row[at], lo, hi) for lo, hi in v)
+             for at, v in g.items())
+
 # --- lib -------------------------------------------------------
 def thing(s):
   if (s[1:] if s[:1] == "-" else s).isdigit(): return int(s)
@@ -165,8 +206,8 @@ def wins(data):
     return max(-100, int(100*(1 - (v-lo)/(med-lo + TINY))))
   return f
 
-def pick(hold, score):
-  return min(sorted(hold, key=score)[:the.check], key=score)
+def pick(lst, sorter,final):
+  return max(sorted(lst, key=sorter)[:the.check], key=final)
 
 def holdout(data):
   win, out = wins(data), Num()
@@ -189,18 +230,61 @@ def test__csv():
   for row in csv(the.file): print(row)
 
 def test__data(): 
-  d=Data(csv(the.file))
-  win=wins(d)
-  out=Num()
+  d   = Data(csv(the.file))
+  win = wins(d)
+  num = Num()
   for _ in range(20):
     rows = shuffle(d.rows)
     n = len(rows)//2
     train,test = rows[:n],rows[n:]
-    lab = clone(d, landscape(clone(d, some(train,2048))))
-    best,rest = clone(d,lab.rows[:5]), clone(d,lab.rows[5:])
-    order = lambda r: distx(lab,r,mids(best)) - distr(lab(r,mids(rest)))
-    row = win(pick(test,order))
-  print(int(mu_(out)))
+    lab   = clone(d, landscape(clone(d, some(train,2048))))
+    best,rest = clone(d,lab.rows[:the.grow]), clone(d,lab.rows[-the.grow:])
+    order = lambda r: distx(lab,r,mids(best)) - distx(lab,r,mids(rest))
+    best  = pick(test, order, win)
+    num   = add(num, win(best))
+  print(int(mu_(num)))
+
+def test__ranges():
+  d = Data(csv(the.file))
+  lab = landscape(clone(d, some(d.rows, the.cap)))
+  t = len(lab)//3
+  best, rest = lab[:t], lab[-t:]
+  fmt = lambda v: "-inf" if v==-BIG else "inf" if v==BIG else f"{v:g}"
+  for w, at, lo, hi in sorted(bands(d, best, rest), key=lambda x: -abs(x[0])):
+    rng = fmt(lo) if lo==hi else f"{fmt(lo):>8} .. {fmt(hi)}"
+    print(f"{w:+.2f}  {d.names[at]:14} {rng}")
+
+def _rules(d, n=300):                            # (a sum-w, b mean-disty) pairs
+  lab = landscape(clone(d, some(d.rows, the.cap)))
+  t = len(lab)//3
+  bnd = [b for b in bands(d, lab[:t], lab[-t:]) if abs(b[0]) >= 0.05]
+  ab = []
+  for _ in range(n):
+    sub = esample(bnd, 1 + int(rand()*5))        # random rule, 1..5 ranges
+    sel = [r for r in lab if selects(rule(sub), r)]
+    if len(sel) >= 3:                            # gate noisy tiny selections
+      a = sum(w for w, *_ in sub)
+      ab.append((a, sum(disty(d, r) for r in sel)/len(sel)))
+  return ab
+
+def pearson(ab):
+  xs = [a for a, _ in ab]; ys = [b for _, b in ab]
+  mx, my = sum(xs)/len(xs), sum(ys)/len(ys)
+  cov = sum((a-mx)*(b-my) for a, b in ab)
+  return cov / ((sum((a-mx)**2 for a in xs)*sum((b-my)**2 for b in ys))**.5 + TINY)
+
+def test__rules():                               # batch-friendly: r<tab>name
+  ab = _rules(Data(csv(the.file)))
+  print(f"{pearson(ab):+.3f}\t{the.file.split('/')[-1]}")
+
+def test__plot():                                # single dataset -> rules.png
+  ab = _rules(Data(csv(the.file))); r = pearson(ab)
+  import matplotlib; matplotlib.use("Agg")
+  import matplotlib.pyplot as plt
+  plt.scatter([a for a,_ in ab], [b for _,b in ab], s=8, alpha=.5)
+  plt.xlabel("(a) sum of range weights"); plt.ylabel("(b) mean disty selected")
+  plt.title(f"{the.file.split('/')[-1]}  r={r:+.2f}  n={len(ab)}")
+  plt.savefig("rules.png", dpi=110, bbox_inches="tight"); print("wrote rules.png", r)
 
 if __name__ == "__main__":
   for k, v in zip(sys.argv, sys.argv[1:]):
