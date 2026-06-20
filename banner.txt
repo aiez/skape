@@ -1,0 +1,8 @@
+     _                    
+ ___| | ____ _ _ __   ___ 
+/ __| |/ / _` | '_ \ / _ \
+\__ \   < (_| | |_) |  __/
+|___/_|\_\__,_| .__/ \___|
+              |_|         
+FastMap landscape active learner. http://tiny.cc/skape
+"label a few, project the rest, keep the best 2/3."

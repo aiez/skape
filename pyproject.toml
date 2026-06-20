@@ -1,0 +1,20 @@
+[project]
+name = "skape"
+version = "0.1.0"
+readme = ",skape.md"
+description = "FastMap landscape active learner: cheap labels -> a tiny tree"
+authors = [{name = "Tim Menzies", email = "timm@ieee.org"}]
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = []            # stdlib only, by design
+
+[tool.setuptools]
+py-modules = ["skape"]
+
+[project.urls]
+Homepage = "http://tiny.cc/skape"
+
+# same terse house style as nuff -- 2-space indent, short names,
+# one-line colon bodies, grouped imports.
+[tool.ruff.lint]
+ignore = ["E701", "E702", "E731", "E741", "E401"]
