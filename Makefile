@@ -23,8 +23,9 @@ push2pypi: ## build + upload to PyPI (needs ~/.pypirc account token)
 
 P ?= 8                      # xargs workers
 
-../tmp/konfig/skateper :
+~/tmp/konfig/skateper :
+	@mkdir -p $(@D)
 	@ls ../optimiz/*.csv | sort -R | xargs -P$(P) -I{} \
-	  python3 -B skape.py --file {} --data | tee /dev/tty \
-    | gawk -f per.awk > $@
+	  python3 -B skape.py --file {} --data | tee $@
+	@gawk -v c=3 -f per.awk $@
 

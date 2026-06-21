@@ -10,7 +10,7 @@ BIG, TINY = 1e32, 1e-32
 the = o(seed=1234567891, grow=4, keep=0.66, budget=50, cap=1024, 
         check=5, leaf=3, repeats=20, eps=0.1, maxd=4, fast=100, 
 
-        slow=10, file="../optimiz/auto93.csv")
+        slow=10, few=6, file="../optimiz/auto93.csv")
 
 #-- cols -------------------------------------------------------
 Sym = dict
@@ -118,7 +118,7 @@ def splits(b, r, lo=-BIG, hi=BIG, d=0):
   cut = [v for v in b + r if lo < v < hi]
   v = max(cut, key=lambda v: abs(F(b, v)-F(r, v)), default=None)
   if v is None or abs(F(b,v)-F(r,v)) < the.eps or d >= the.maxd:
-    yield lo,hi (F(b,hi)-F(b,lo)) - (F(r,hi) - F(r,lo)); return
+    yield lo,hi,(F(b,hi) - F(b,lo)) - (F(r,hi) - F(r,lo)); return
   yield from splits(b, r, lo, v, d+1)
   yield from splits(b, r, v, hi, d+1)
 
@@ -139,11 +139,12 @@ def bands(data, best, rest):
 
 #-- rules -------------------------------------------------------
 def esample(bnd, k):
-  key = lambda x:rand()**(1/(abs(x[0]) or TINY))
+  key = lambda x:rand()**(1 / (abs(x[0]) or TINY))
   return sorted(bnd, key=key)[-k:]
 
 def rule(sub):
-  g={}; for w,at,lo,hi in sub: g[at] = g.get(at,[]) + [(lo,hi)]
+  g={}
+  for w,at,lo,hi in sub: g[at] = g.get(at,[]) + [(lo,hi)]
   return g
 
 def selects(g, row):
@@ -176,17 +177,18 @@ def wins(data):
     return max(-100, int(100*(1 - (v-lo)/(med-lo + TINY))))
   return f
 
-def thirds(lab, key):
-  lab = sorted(lab, key=key); t = len(lab)//3
-  return lab[:t], lab[-t:]
+def edges(lab, key):
+  lab = sorted(lab, key=key)
+  return lab[:the.few], lab[-the.few:]
 
 def meanof(rows, y): 
   return mu_(adds(map(y, rows))) if rows else BIG
 
 def rskape(data):
-  win = wins(data); y = lambda r: disty(data, r)
+  win = wins(data)
+  y = lambda r: disty(data, r)
   return holdout(data,
-    lambda d,lab: thirds(lab, y),
+    lambda d,lab: edges(lab, y),
     lambda d,lab,g: meanof([r for r in lab if selects(g,r)],y),
     lambda d,sel: win(min(some(sel, the.check), key=y)))
 
@@ -220,12 +222,13 @@ def memo(fn):
 
 def pcts(xs):
   xs = sorted(xs)
-  return " ".join(f"{xs[int(p/100*len(xs))]:>4}" 
+  return " ".join(f"{xs[int(p/100*len(xs))]:>4}"
                   for p in (10,30,50,70,90))
 
 #-- main -------------------------------------------------------
 def main():
-  print(f"{pcts(rskape(Data(csv(the.file))))}   {the.file.split('/')[-1][:-4]}")
+  print(f"{pcts(rskape(Data(csv(the.file))))}",end=" ")
+  print(f"{the.file.split('/')[-1][:-4]}")
 
 def test__the():  print(the)
 def test__csv():  [print(r) for r in csv(the.file)]
