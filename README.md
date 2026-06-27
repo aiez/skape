@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 Tim Menzies, MIT License https://opensource.org/licenses/MIT -->
 <a href="https://timm.fyi"><img align="right" alt="Author" src="https://img.shields.io/badge/Author-timm-dc143c?logo=readme&logoColor=white"></a><img align="right" alt="Language" src="https://img.shields.io/badge/Language-Python%203.12+-000080?logo=python&logoColor=white"><img align="right" alt="Deps" src="https://img.shields.io/badge/Deps-0-32cd32?logo=checkmarx&logoColor=white"><a href="https://choosealicense.com/licenses/mit/"><img align="right" alt="License" src="https://img.shields.io/badge/License-MIT-32cd32?logo=open-source-initiative&logoColor=white"></a><img align="right" alt="Purpose" src="https://img.shields.io/badge/Purpose-Active·Learning-7b68ee?logo=githubcopilot&logoColor=white"><br>
 
-### [http://tiny.cc/skape](http://tiny.cc/skape)
+### [https://github.com/aiez/skape](https://github.com/aiez/skape)
 skape: a multi-objective optimizer that spends labels like they are
 expensive — because they are. Each level it labels a few rows,
 projects the whole pool onto a FastMap line (poles = the two most

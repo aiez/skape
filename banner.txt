@@ -4,5 +4,5 @@
 \__ \   < (_| | |_) |  __/
 |___/_|\_\__,_| .__/ \___|
               |_|         
-FastMap landscape active learner. http://tiny.cc/skape
+FastMap landscape active learner. https://github.com/aiez/skape
 "label a few, project the rest, keep the best 2/3."

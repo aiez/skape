@@ -12,7 +12,7 @@ dependencies = []            # stdlib only, by design
 py-modules = ["skape"]
 
 [project.urls]
-Homepage = "http://tiny.cc/skape"
+Homepage = "https://github.com/aiez/skape"
 
 # same terse house style as nuff -- 2-space indent, short names,
 # one-line colon bodies, grouped imports.
