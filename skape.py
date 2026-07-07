@@ -1,5 +1,5 @@
 #!/usr/bin/env python3 -B
-import sys
+import sys, os
 from math import exp
 from bisect import bisect_right
 from random import random as rand, sample, seed
@@ -7,10 +7,19 @@ from types import SimpleNamespace as o
 isa = isinstance
 BIG, TINY = 1e32, 1e-32
 
-the = o(seed=1234567891, grow=4, keep=0.66, budget=50, cap=1024, 
-        check=5, leaf=3, repeats=20, eps=0.1, maxd=4, fast=100, 
+def doot(p=os.path.dirname(os.path.abspath(__file__))):
+  if d := os.environ.get("DOOT"): return d   # gists root; see konfig/style_gist.md
+  while p != os.path.dirname(p):             # else climb for a konfig/ sibling
+    if os.path.isdir(p + "/konfig"): return p
+    p = os.path.dirname(p)
+  return ".."                                # last-resort bootstrap default
 
-        slow=10, few=6, pos=0, file="../optimiz/auto93.csv")
+DOOT = doot()
+
+the = o(seed=1234567891, grow=4, keep=0.66, budget=50, cap=1024,
+        check=5, leaf=3, repeats=20, eps=0.1, maxd=4, fast=100,
+
+        slow=10, few=6, pos=0, file=DOOT + "/optimiz/auto93.csv")
 
 #-- cols -------------------------------------------------------
 Sym = dict

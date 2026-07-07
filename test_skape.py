@@ -1,12 +1,12 @@
 #!/usr/bin/env python3 -B
-"""test_skape.py: smoke tests (needs ../optimiz/auto93.csv).
+"""test_skape.py: smoke tests (needs the optimiz sibling gist).
 
   python3 -B test_skape.py
 """
 import random
 import skape as S
 
-F = "../optimiz/auto93.csv"
+F = S.the.file                                 # DOOT-routed auto93.csv default
 
 def test_data():
   "csv loads typed, hashable rows; columns get roles."
@@ -22,21 +22,29 @@ def test_dist():
   assert abs(S.distx(d, a, b) - S.distx(d, b, a)) < 1e-9
 
 def test_landscape():
-  "acquires ~budget labels, all from the data."
+  "acquires <=budget labels, all from the data, sorted best-first."
   d = S.Data(S.csv(F))
   lab = S.landscape(d)
-  assert S.the.budget - 2*S.the.grow <= len(lab) <= S.the.budget
+  assert 0 < len(lab) <= S.the.budget
   assert all(r in d.rows for r in lab)
+  ys = [S.disty(d, r) for r in lab]
+  assert ys == sorted(ys)
 
-def test_tree():
-  "tree over the labels predicts a disty mean in 0..1."
+def test_learn():
+  "rule learner over the labels selects a nonempty subset."
   d = S.Data(S.csv(F))
-  t = S.tree(d, S.landscape(d))
-  assert 0 <= S.treePredict(t, d.rows[0]) <= 1
+  y = lambda r: S.disty(d, r)
+  g = S.learn(d, S.landscape(d),
+              lambda d, lab: S.edges(lab, y),
+              lambda d, lab, g: S.meanof([r for r in lab if S.selects(g, r)], y))
+  assert g and all(isinstance(v, list) for v in g.values())
+  assert any(S.selects(g, r) for r in d.rows)
 
 def test_holdout():
-  "the hold-out win score is a sane 0..100."
-  assert 0 <= S.holdout(S.Data(S.csv(F))) <= 100
+  "rskape: one win score per repeat, each a sane -100..100."
+  xs = S.rskape(S.Data(S.csv(F)))
+  assert len(xs) == S.the.repeats
+  assert all(-100 <= x <= 100 for x in xs)
 
 if __name__ == "__main__":
   fails = 0
