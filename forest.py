@@ -12,13 +12,14 @@ the 32; sort test by it; top-`check` win. Mean over `repeats`.
 
 Rule learner sees every X value, but y only for the locally-labelled.
 
- eg: python3 -B forest.py -file ../optimiz/auto93.csv   (needs skape.py)
+ eg: python3 -B forest.py -file $DOOT/optimiz/auto93.csv   (needs skape.py)
 """
 import sys, random
+from math import log2
 from statistics import median
 import skape as S
 from skape import (o, isa, Sym, Num, add, csv, Data, disty, norm,
-                   spread, some, clone, wins, pick, landscape)
+                   some, clone, wins, landscape)
 
 the = S.the
 the.trees, the.attrs, the.depth = 32, 0.75, 4   # forest knobs
@@ -36,7 +37,8 @@ def ent(ys):
   "Entropy of the y-bins of a list of disty values."
   c = Sym()
   for y in ys: add(c, ybin(y))
-  return spread(c)
+  n = sum(c.values())                          # inlined; skape dropped spread()
+  return -sum(v/n * log2(v/n) for v in c.values() if v)
 
 def labelled(data, rows):
   "Each labelled row -> (ids{at:cutid}, disty); ids use background cols."
@@ -109,6 +111,10 @@ def predict(data, f, row):
     f  = f.left if go == f.yes else f.right
   return f.mu
 
+def pick(rows, score):
+  "Best of the `check` top-ranked rows (skape's old pick, pre-rules)."
+  return min(sorted(rows, key=score)[:the.check], key=score)
+
 def holdout(data):
   win, out = wins(data), Num()
   for _ in range(the.repeats):
@@ -117,7 +123,7 @@ def holdout(data):
     d, test = clone(data, rows[:h]), rows[h:]
     items = labelled(d, landscape(d))            # <=50 labels, bg = train pool
     f = forest(d, items)
-    best = pick(test, lambda r: predict(d, f, r), data)
+    best = pick(test, lambda r: predict(d, f, r))
     out = add(out, win(best))
   return out[1]
 
